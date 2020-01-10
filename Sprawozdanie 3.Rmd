@@ -1,0 +1,6 @@
+---
+title: "Sprawozdanie 3"
+author: "Katarzyna Rzeszutek, Karol Szpyt"
+date: "10 stycznia 2020"
+output: html_document
+---

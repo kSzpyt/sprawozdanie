@@ -7,8 +7,141 @@ encoding: "utf - 8"
 ---
 Zbiór danych na jakich będziemy pracowali zawiera 7 zmiennych - jedną objaśnianą Z1, oraz 6 zmiennych objaśniających (w tym 5 zmiennych numerycznych i jedną zmienną jakościową przybierającą wartości „small”, „medium” oraz „large”). Zbiór danych liczy 100 obserwacji.
 
-###Zadanie 1
-Nasz zbiór danych zostanie podzielony w sposób losowy. Wykorzystamy swój numer albumu (Karola) jako ziarno generatora i podzielimy dane na 2 dwie części
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(fastDummies)
+library(lmtest)
+library(car)
+data <-  read.csv("DaneZ3.csv", sep = ";")
+```
+
+
+###Zadanie 1 i 2
+Nasz zbiór danych zostanie podzielony w sposób losowy. Wykorzystamy swój numer albumu jako ziarno generatora i podzielimy dane na 2 dwie części: jedna próbka *data.train * będzie liczyć 90 obserwacji, a *data.test* 10 obserwacji. Jednak zanim to zrobimy, zajmiemy się zmienną jakościową. Funkcją *dummy* zmiennę jakościową zamienimy na 3 zmienne binarne, gdzie 1 będzie odpowiadała posiadaniu danej cechy (*small*, *medium* lub *large*) przez obserwację. Jedną z kolumn należy usunąć, usuniemy *small*.
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#rozdzielenie zmiennej jakościowej na 3 zmienne binarne
+dmmy <- dummy_cols(data$Z7)
+data <- cbind(data[, 1:6], dmmy[, c(3, 2)])
+colnames(data)[7:8] <- c("Z7.medium", "Z7.large")
+#ziarno generatora
+set.seed(293487)
+#podział na zestaw uczący się i testowy
+train.inx <- sample(1:100, 90)
+data.train <- data[train.inx, ]
+data.test <- data[-train.inx, ]
+```
+Następnie wybierzemy odpowiednią postać modelu metodą Hellwiga
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+hellwig <- function(y, x)
+{
+  n <- ncol(x)
+  l <- (2^n)-1
+  
+  R0 <- cor(y, x)
+  R <- abs(as.matrix(cor(x)))
+
+  argument <- replicate(n, c(0, 1), simplify = FALSE)
+  comb <- as.matrix(expand.grid(argument))
+  comb <- comb[-1,]
+  
+  h <- matrix(0, l, n)
+  
+  for(i in 1:l) 
+  {
+    for(j in 1:n)
+    {
+      h[i,j] <- (comb[i, j] * (R0[j]^2))/ (comb[i,] %*% as.vector(R[,j]))
+    }
+  }
+
+  
+  m=which.max(rowSums(h))
+  colnames(comb) <- colnames(x)
+  
+  return((comb[m,]))
+}
+
+#hellwig(zmienna_objaśniana, zmienna objaśniająca)
+hellwig(data.train[, 1], data.train[, -1])
+```
+Metoda ta pokazała, że do modelu powinniśmy wziąć zmienne Z2, Z7.medium i Z7.large. Jednak nie możemy rozdzielić zmiennej Z7, zatem bierzemy Z7.medium i Z7.large do modelu
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+model1 <- lm(Z1 ~ Z2 + Z7.medium + Z7.large, data.train)
+summary(model1)
+```
+Następnie sprawdzimy koincydencję w modelu
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+korelacje <- cor(data.train, method = "pearson")
+korelacje[1, c(2,7,8)]
+```
+**Niestety nasz model okazał się być niekoincydentny**, zatem musimy dokonać pewnych modyfikacji. Spróbujemy wyestymować model nie biorąc pod uwagę zmiennych jakościowych
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+hellwig <- function(y, x)
+{
+  n <- ncol(x)
+  l <- (2^n)-1
+  
+  R0 <- cor(y, x)
+  R <- abs(as.matrix(cor(x)))
+
+  argument <- replicate(n, c(0, 1), simplify = FALSE)
+  comb <- as.matrix(expand.grid(argument))
+  comb <- comb[-1,]
+  
+  h <- matrix(0, l, n)
+  
+  for(i in 1:l) 
+  {
+    for(j in 1:n)
+    {
+      h[i,j] <- (comb[i, j] * (R0[j]^2))/ (comb[i,] %*% as.vector(R[,j]))
+    }
+  }
+
+  
+  m=which.max(rowSums(h))
+  colnames(comb) <- colnames(x)
+  
+  return((comb[m,]))
+}
+
+#hellwig(zmienna_objaśniana, zmienna objaśniająca)
+hellwig(data.train[, 1], data.train[, -c(1,7,8)])
+```
+Tym razem metoda Hellwiga wskazuje na zmienne Z2 i Z3, zatem wyestymujemy taki model
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+model2 <- lm(Z1 ~ Z2 + Z3, data.train)
+summary(model2)
+```
+Sprawdzimy założenie o normalności reszt w celu weryfikacji istotności zmiennych w modelu za pomocą testu t - Studenta, którego hipotezy wyglądają następująco:
+  
+  *H0: Rozkład badanej cechy jest rozkładem normalnym*
+  
+  *H1: Rozkład badanej cechy nie jest rozkładem normalnym.*
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+shapiro.test(model1$residuals)
+```
+P - value pokazało, że rozkład reszt jest rozkładem normalnym, zatem spełnione jest założenie testu t - Studenta.
+
+##Zadanie 3
+Dla wybranej postaci modelu przeprowadzamy odpowiednie testy, weryfikujące jego poprawność.
+
+  
+  * **Koincydencja modelu** - W celu sprawdzenia czy model jest koincydentny sprawdzamy czy spełniony jest warunek 
+$$sgn(r_{i}) = sgn(a_{i})$$ gdzie i = 1,2,,,,k. $a_{i}$ to oszacowanie parametru strukturalnego występującego przy zmiennej objaśniającej $X_{i}$, a $r_{i}$ jest współczynnikiem korelacji liniowej Pearsona między zmienną $X_{i}$ a $Y_{i}$. Jeżeli model nie jest koincydentny, należy zmienić zbiór zmiennych objaśniających. Przyczynami braku koicydentności może być np. niewłaściwa postać analityczna modelu ekonometrycznego, bądź występująca współliniowość.Jeżeli wynik weryfikacji jest pozytywny, zbudowany model uznawany jest za dopuszczalny.
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+```
+  
+  * **istotność parametrów strukturalnych**
+  
+  * **heteroskedatyczność** 
+
+
+
+
+
+
 
 
 

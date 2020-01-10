@@ -3,10 +3,20 @@ title: "Sprawozdanie 3"
 author: "Katarzyna Rzeszutek, Karol Szpyt"
 date: "10 stycznia 2020"
 output: html_document
+encoding: "utf - 8"
 ---
-paris platinov 
+Zbiór danych na jakich będziemy pracowali zawiera 7 zmiennych - jedną objaśnianą Z1, oraz 6 zmiennych objaśniających (w tym 5 zmiennych numerycznych i jedną zmienną jakościową przybierającą wartości „small”, „medium” oraz „large”). Zbiór danych liczy 100 obserwacji.
 
-```{r}
-1+1
-```
+###Zadanie 1
+Nasz zbiór danych zostanie podzielony  go w sposób losowy wykorzystując jako ziarno generatora swój numer albumu na dwie części
+
+
+
+
+
+
+
+
+
+
 

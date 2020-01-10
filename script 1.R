@@ -11,10 +11,10 @@ ggpairs(data.train)
 data <-  read.csv("DaneZ3.csv", sep = ";")
 dmmy <- dummy_cols(data$Z7)
 
-data <- cbind(data[, 1:6], dmmy[, c(3, 2)])
-colnames(data)[7:8] <- c("Z7.medium", "Z7.large")
+data <- cbind(data[, 1:6], dmmy[, c(4, 3, 2)])
+colnames(data)[7:9] <- c("Z7.small", "Z7.medium", "Z7.large")
 
-set.seed(293478)
+set.seed(293487)
 
 train.inx <- sample(1:100, 90)
 

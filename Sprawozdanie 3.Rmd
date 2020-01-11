@@ -11,6 +11,7 @@ Zbiór danych na jakich będziemy pracowali zawiera 7 zmiennych - jedną objaśn
 library(fastDummies)
 library(lmtest)
 library(car)
+library(strucchange)
 data <-  read.csv("DaneZ3.csv", sep = ";")
 ```
 
@@ -37,17 +38,17 @@ Dla modelu będziemy weryfikowali kilka własności, aby wykazać że jest on do
   
   * istotność parametrów strukturalnych - test t-Studenta 
   
-  * istotność współczynnika determinacji
+  * istotność współczynnika determinacji - test Fishera-Snedecora
   
   * łączną istotność parametrów strukturalnych - test Walda
   
   * współliniowość - parametr VIF
   
-  * heteroskedastyczność - 
+  * heteroskedastyczność - test Breuscha Pagana, Harrisona-McCabea i Goldfelda-Quandta
   
-  * !!!poprawną specyfikację modelu - test RESET
+  * poprawną specyfikację modelu - test RESET
   
-  * !!!czy postać funkcyjna modelu jest stabilna - test Chowa
+  * czy postać funkcyjna modelu jest stabilna - test CUSUM (cumulated sum of residuals), zwanego także testem Harvey’a-Colliera
 
 Następnie wybierzemy odpowiednią postać modelu metodą Hellwiga
 
@@ -89,12 +90,13 @@ Metoda ta pokazała, że do modelu powinniśmy wziąć zmienne Z2, Z7.medium i Z
 model1 <- lm(Z1 ~ Z2 + Z7.medium + Z7.large, data.train)
 summary(model1)
 ```
-Następnie sprawdzimy koincydencję w modelu
+Następnie sprawdzimy koincydencję w modelu - W tym celu sprawdzamy czy spełniony jest warunek 
+$$sgn(r_{i}) = sgn(a_{i})$$ gdzie i = 1,2,,,,k. $a_{i}$ to oszacowanie parametru strukturalnego występującego przy zmiennej objaśniającej $X_{i}$, a $r_{i}$ jest współczynnikiem korelacji liniowej Pearsona między zmienną $X_{i}$ a $Y_{i}$
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 korelacje <- cor(data.train, method = "pearson")
 korelacje[1, c(2,7,8)]
 ```
-**Niestety nasz model okazał się być niekoincydentny**, zatem musimy dokonać pewnych modyfikacji. Spróbujemy wyestymować model nie biorąc pod uwagę zmiennych jakościowych
+**Niestety nasz model okazał się być niekoincydentny**, zatem musimy dokonać pewnych modyfikacji. Spróbujemy wyestymować model jeszcze raz (metodą Hellwiga) nie biorąc pod uwagę zmiennych jakościowych
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 hellwig <- function(y, x)
 {
@@ -147,7 +149,8 @@ P - value pokazało, że rozkład reszt jest rozkładem normalnym, zatem spełni
   *H0: dana zmienna nie oddziałuje istotnie na zmienną objaśnianą*
   
   *H0: dana zmienna  oddziałuje istotnie na zmienną objaśnianą.*
-Pokazuje on, że wyraz wolny jest nieistotny, zatem usuniemy go ze swojego modelu.
+  
+  Pokazuje on, że wyraz wolny jest nieistotny, zatem usuniemy go ze swojego modelu.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 model3 <- lm(Z1 ~ Z2 + Z3 -1, data.train)
 summary(model3)
@@ -163,8 +166,7 @@ Reszty naszego modelu są normalne, zatem możemy stwierdzić, że **każda ze z
   
   **Współczynnik korelacji wielorakiej na podstawie testu F okazał się istotny**.
   
-  Sprawdzimy koincydencję - W celu sprawdzenia czy model jest koincydentny sprawdzamy czy spełniony jest warunek 
-$$sgn(r_{i}) = sgn(a_{i})$$ gdzie i = 1,2,,,,k. $a_{i}$ to oszacowanie parametru strukturalnego występującego przy zmiennej objaśniającej $X_{i}$, a $r_{i}$ jest współczynnikiem korelacji liniowej Pearsona między zmienną $X_{i}$ a $Y_{i}$
+  Sprawdzimy koincydencję
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 korelacje <- cor(data.train, method = "pearson")
 korelacje[1, c(2,3)]
@@ -173,29 +175,132 @@ korelacje[1, c(2,3)]
   
   Sprawdzimy łączną istotność parametrów strukturalnych testem Walda. Hipotezy:
   
-  H0: $\beta_{1} = \beta_{2} = ... =\beta_{k} = 0$
+  H0: $\beta_{1} = \beta_{2} = ... =\beta_{k} = 0$ - parametry są łącznie nieistotne
   
-  H1: $\beta_{1} = \beta_{2} = ... =\beta_{k}$ nie jest równe 0.
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+  H1: $\beta_{1} = \beta_{2} = ... =\beta_{k}$ nie jest równe 0 - parametry są łącznie istotne
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 waldtest(model3)
 ```
 **Model ma łącznie istotne parametry**.
   
   Sprawdzimy czy w modelu zachodzi zjawisko współliniowości
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 vif(model3)
 ```
 Współliniowość oceniamy *czynnikiem inflacji wariancji* (VIF). Wskaźnik ten pokazuje ile razy wariancja predyktora jest większa od wartości niezakłóconej współliniowością, gdzie 1 jest najmniejszą możliwą wartością, a 10 największą. **W modelu nie ma zjawiska współliniowośći**.
   
-  Sprawdzimy zjawisko heteroskedastyczności. Hipotezy:
+  Sprawdzimy zjawisko heteroskedastyczności, dla pewności aż 3 testami. Hipotezy:
   
-  *H0: homoskedastyczność*
+  *H0: homoskedastyczność składnika losowego*
   
-  *H1: 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+  *H1: heteroskedastyczność składnika losowego*
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 ncvTest(model3)
+hmctest(model3)
+gqtest(model3)
 ```
+Przyjmujemy hipotezę zerową dla każdego z testów - **reszty naszego modelu są homoskedastyczne**.
+
+
+###Zadanie 4
+  Aby można było dokonywać predykcji na modelu musi on spełniać warunki takie jak pozytywna weryfikacja oraz stabilne relacje między zmiennymi - poprawna specyfikacja modelu, stabilność parametrów i rozkład składnika losowego, który spełnia założenia MNK i ma normalne reszty (co dowiedliśmy). Sprawdzimy najpierw poprawną specyfikację modelu za pomocą testu RESET. Hipotezy:
+  *H0: wybór postaci analitycznej modelu jest prawidłowy,*
   
+  *H1: wybór postaci analitycznej modelu nie jest prawidłowy,*
+  
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+resettest(model3)
+```
+Przyjmujemy hipotezę zerową, że nasz **model ma poprawną specyfikację modelu**.
+  
+  Stabilność parametrów sprawdzimy za pomocą testu CUSUM (cumulated sum of residuals), zwanego także testem Harvey’a-Colliera. Hipotezy:
+  H0: parametry są stabilne
+  
+  H0: parametry nie są stabilne
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+harvtest(model3)
+```
+Na jego podstawie uznajemy, że **parametry modelu są stabilne**. Na podstawie tych 2 dowiedzionych własności wiemy, że **na podstawie otrzymanego modelu można dokonywać prognozy**.
+
+###Zadanie 5
+Wyznaczymy prognozę punktową oraz 95% przedział ufności dla podanych wartości
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+df.pr <- data.frame(-10.5, 8, 51.7, 12.8, 94.6, 0, 0, 1)
+names(df.pr) <- names(data)[-1]
+pred1 <- predict(model3, newdata = df.pr, interval = 'confidence')
+```
+Prognoza punktowa dla tego zestawu zmiennych wyniosła -12.1217, a przedziały ufności od -17.76622 do -6.477184.
+
+###Zadanie 6
+Wykorzystując podzbiór testowy dokonamy prognozy EX POST dla tych obserwacji i dla każdej obserwacji obliczymy różnicę pomiędzy rzeczywistą wartością zmiennej Z1, a jej wartością prognostyczną
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+pred <- predict(model3, newdata = data.test, interval = 'confidence')
+#różnice pomiędzy rzeczywistą wartością Z1 a prognozowaną - to na pewno dobrze?
+diff <- data$Z1 - pred[, 1]
+#nie wiem co ten wykres przedstawia
+plot(pred, type = "l")
+lines(data.test$Z1, col = "red")
+#wykres wartości rzeczywistych Z1 (na czarno) i przewidywanych (na czerwono)
+plot(data.test$Z1, type = "l")
+lines(pred[, 1], col = "red")
+```
+
+###Zadanie 7
+Dla prognoz z zadania 6 obliczymy średni błąd predykcji EX POST. Im jest on bliższy 0 tym prognoza była dokładniejsza.
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+err <- function(real, pred)
+{
+  mean(real - pred)
+}
+err(data$Z1, pred[, 1])
+```
+Przeciętne obciążenie prognozy to -17.33737, co wskazuje na to, że prognozy wygasłe były przeszacowane. Opisz w jakich sytuacjach stosowanie tego błędy w analizach jest niewskazane?
+
+###Zadanie 8
+Dla prognoz z zadania 6 obliczymy średni bezwzględny błąd predykcji EX POST, który podaje w jednostkach bezwzględnych, o ile średnio prognoza różni się od wartości rzeczywistej
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+err.bwzg <- function(real, pred)
+{
+  mean(abs(real - pred))
+}
+err.bwzg(data$Z1, pred[, 1])
+```
+Rzeczywiste relacje zmiennej prognozowanej
+będą się odchylać o 50.81189 od prognoz.
+
+Różnica pomiędzy tym błędem, a błędem z zadania 7 (zakładając, że obserwacje są szeregiem czasowym) wskazuje na ?
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+err.bwzg(data$Z1, pred[, 1]) - err(data$Z1, pred[, 1])
+```
+
+###Zadanie 9
+Dla prognoz z zadania 6 obliczymy średniokwadratowy błąd predykcji EX POST
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+err.sr.kw <- function(real, pred)
+{
+  mean((real - pred)^2)
+}
+
+err.sr.kw(data$Z1, pred[, 1])
+
+```
+Średniokwadratowy błąd predykcji EX POST wynosi 4130.407.
+Opisz w jakich sytuacjach wskazane jest stosowanie błędu z zadania 8, a w jakich tego obliczonego w tym zadaniu?
+
+###Zadanie 10
+Dla prognoz z zadania 6 obliczymy średni bezwzględny procentowy błąd predykcji EX POST. Zakładając, że opracowanie modelu prognostycznego było zleceniem wykonywanym na potrzeby pewnej firmy, która w umowie zawarła klauzulę, że błąd MAPE nie powinien przekroczyć 5%, ocenimy czy stworzony przez zespół model spełnia to wymaganie.
+  
+  Błąd MAPE podaje o ile procent średnio prognoza różni się od wartości rzeczywistej. Błędy średnie wyznacza się wtedy, gdy znana jest już rzeczywista wartość zmiennej prognozowanej i są one miarą różnicy między wartością prognozy i zaobserwowaną wartością zmiennej prognozowanej.
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+MAPE <- function(real, pred)
+{
+  mean(abs((real - pred)/real))*100
+}
+
+MAPE(data$Z1, pred[, 1])
+```
+
+
 
 
 

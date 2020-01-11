@@ -35,9 +35,6 @@ pred <- predict(model, newdata = data.test, interval = 'confidence')
 
 diff <- data$Z1 - pred[, 1]
 
-plot(pred, type = "l")
-lines(data.test$Z1, col = "red")
-
 plot(data.test$Z1, type = "l")
 lines(pred[, 1], col = "red")
 ##########

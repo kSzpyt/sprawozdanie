@@ -233,17 +233,17 @@ pred1 <- predict(model3, newdata = df.pr, interval = 'confidence')
 Prognoza punktowa dla tego zestawu zmiennych wyniosła -12.1217, a przedziały ufności od -17.76622 do -6.477184.
 
 ###Zadanie 6
-Wykorzystując podzbiór testowy dokonamy prognozy EX POST dla tych obserwacji i dla każdej obserwacji obliczymy różnicę pomiędzy rzeczywistą wartością zmiennej Z1, a jej wartością prognostyczną
+Wykorzystując podzbiór testowy dokonamy prognozy EX POST dla tych obserwacji i dla każdej obserwacji obliczymy różnicę pomiędzy rzeczywistą wartością zmiennej Z1, a jej wartością prognozowaną. Wykres przedstawia wartości rzeczywsite (czarna krzywa) oraz wartości prognozowane (czerwona krzywa).
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
 pred <- predict(model3, newdata = data.test, interval = 'confidence')
 #różnice pomiędzy rzeczywistą wartością Z1 a prognozowaną - to na pewno dobrze?
-diff <- data$Z1 - pred[, 1]
-#nie wiem co ten wykres przedstawia
-plot(pred, type = "l")
-lines(data.test$Z1, col = "red")
+diff <- data.test$Z1 - pred[, 1]
+
 #wykres wartości rzeczywistych Z1 (na czarno) i przewidywanych (na czerwono)
 plot(data.test$Z1, type = "l")
 lines(pred[, 1], col = "red")
+
+diff
 ```
 
 ###Zadanie 7

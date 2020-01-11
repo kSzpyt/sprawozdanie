@@ -204,6 +204,7 @@ Przyjmujemy hipotezę zerową dla każdego z testów - **reszty naszego modelu s
 
 ###Zadanie 4
   Aby można było dokonywać predykcji na modelu musi on spełniać warunki takie jak pozytywna weryfikacja oraz stabilne relacje między zmiennymi - poprawna specyfikacja modelu, stabilność parametrów i rozkład składnika losowego, który spełnia założenia MNK i ma normalne reszty (co dowiedliśmy). Sprawdzimy najpierw poprawną specyfikację modelu za pomocą testu RESET. Hipotezy:
+  
   *H0: wybór postaci analitycznej modelu jest prawidłowy,*
   
   *H1: wybór postaci analitycznej modelu nie jest prawidłowy,*
@@ -233,7 +234,7 @@ Prognoza punktowa dla tego zestawu zmiennych wyniosła -12.1217, a przedziały u
 
 ###Zadanie 6
 Wykorzystując podzbiór testowy dokonamy prognozy EX POST dla tych obserwacji i dla każdej obserwacji obliczymy różnicę pomiędzy rzeczywistą wartością zmiennej Z1, a jej wartością prognostyczną
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
 pred <- predict(model3, newdata = data.test, interval = 'confidence')
 #różnice pomiędzy rzeczywistą wartością Z1 a prognozowaną - to na pewno dobrze?
 diff <- data$Z1 - pred[, 1]
@@ -269,7 +270,7 @@ Rzeczywiste relacje zmiennej prognozowanej
 będą się odchylać o 50.81189 od prognoz.
 
 Różnica pomiędzy tym błędem, a błędem z zadania 7 (zakładając, że obserwacje są szeregiem czasowym) wskazuje na ?
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 err.bwzg(data$Z1, pred[, 1]) - err(data$Z1, pred[, 1])
 ```
 

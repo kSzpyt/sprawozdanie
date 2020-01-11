@@ -15,7 +15,7 @@ data <-  read.csv("DaneZ3.csv", sep = ";")
 ```
 
 
-###Zadanie 1 i 2
+###Zadanie 1, 2 i 3
 Nasz zbiór danych zostanie podzielony w sposób losowy. Wykorzystamy swój numer albumu jako ziarno generatora i podzielimy dane na 2 dwie części: jedna próbka *data.train * będzie liczyć 90 obserwacji, a *data.test* 10 obserwacji. Jednak zanim to zrobimy, zajmiemy się zmienną jakościową. Funkcją *dummy* zmiennę jakościową zamienimy na 3 zmienne binarne, gdzie 1 będzie odpowiadała posiadaniu danej cechy (*small*, *medium* lub *large*) przez obserwację. Jedną z kolumn należy usunąć, usuniemy *small*.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 #rozdzielenie zmiennej jakościowej na 3 zmienne binarne
@@ -29,6 +29,26 @@ train.inx <- sample(1:100, 90)
 data.train <- data[train.inx, ]
 data.test <- data[-train.inx, ]
 ```
+Dla modelu będziemy weryfikowali kilka własności, aby wykazać że jest on dobry:
+  
+  * współczynnik determinacji $R^2$
+  
+  * koincydencję
+  
+  * istotność parametrów strukturalnych - test t-Studenta 
+  
+  * istotność współczynnika determinacji
+  
+  * łączną istotność parametrów strukturalnych - test Walda
+  
+  * współliniowość - parametr VIF
+  
+  * heteroskedastyczność - 
+  
+  * !!!poprawną specyfikację modelu - test RESET
+  
+  * !!!czy postać funkcyjna modelu jest stabilna - test Chowa
+
 Następnie wybierzemy odpowiednią postać modelu metodą Hellwiga
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -113,7 +133,8 @@ Tym razem metoda Hellwiga wskazuje na zmienne Z2 i Z3, zatem wyestymujemy taki m
 model2 <- lm(Z1 ~ Z2 + Z3, data.train)
 summary(model2)
 ```
-Sprawdzimy założenie o normalności reszt w celu weryfikacji istotności zmiennych w modelu za pomocą testu t - Studenta, którego hipotezy wyglądają następująco:
+  
+  Sprawdzimy założenie o normalności reszt w celu weryfikacji istotności zmiennych w modelu za pomocą testu t - Studenta, którego hipotezy wyglądają następująco:
   
   *H0: Rozkład badanej cechy jest rozkładem normalnym*
   
@@ -121,25 +142,60 @@ Sprawdzimy założenie o normalności reszt w celu weryfikacji istotności zmien
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 shapiro.test(model1$residuals)
 ```
-P - value pokazało, że rozkład reszt jest rozkładem normalnym, zatem spełnione jest założenie testu t - Studenta.
-
-##Zadanie 3
-Dla wybranej postaci modelu przeprowadzamy odpowiednie testy, weryfikujące jego poprawność.
-
+P - value pokazało, że rozkład reszt jest rozkładem normalnym, zatem spełnione jest założenie testu t - Studenta. Jego hipotezy:
   
-  * **Koincydencja modelu** - W celu sprawdzenia czy model jest koincydentny sprawdzamy czy spełniony jest warunek 
-$$sgn(r_{i}) = sgn(a_{i})$$ gdzie i = 1,2,,,,k. $a_{i}$ to oszacowanie parametru strukturalnego występującego przy zmiennej objaśniającej $X_{i}$, a $r_{i}$ jest współczynnikiem korelacji liniowej Pearsona między zmienną $X_{i}$ a $Y_{i}$. Jeżeli model nie jest koincydentny, należy zmienić zbiór zmiennych objaśniających. Przyczynami braku koicydentności może być np. niewłaściwa postać analityczna modelu ekonometrycznego, bądź występująca współliniowość.Jeżeli wynik weryfikacji jest pozytywny, zbudowany model uznawany jest za dopuszczalny.
+  *H0: dana zmienna nie oddziałuje istotnie na zmienną objaśnianą*
+  
+  *H0: dana zmienna  oddziałuje istotnie na zmienną objaśnianą.*
+Pokazuje on, że wyraz wolny jest nieistotny, zatem usuniemy go ze swojego modelu.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-
+model3 <- lm(Z1 ~ Z2 + Z3 -1, data.train)
+summary(model3)
+```
+Ponownie badamy rozkład  reszt, by móc oceniać istotność parametrów
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+shapiro.test(model3$residuals)
 ```
   
-  * **istotność parametrów strukturalnych**
+Reszty naszego modelu są normalne, zatem możemy stwierdzić, że **każda ze zmiennych jest istotna** (na podstawie testu t-Studenta).
   
-  * **heteroskedatyczność** 
-
-
-
-
+  **Współczynnik determinacji** naszego modelu to 0.71.
+  
+  **Współczynnik korelacji wielorakiej na podstawie testu F okazał się istotny**.
+  
+  Sprawdzimy koincydencję - W celu sprawdzenia czy model jest koincydentny sprawdzamy czy spełniony jest warunek 
+$$sgn(r_{i}) = sgn(a_{i})$$ gdzie i = 1,2,,,,k. $a_{i}$ to oszacowanie parametru strukturalnego występującego przy zmiennej objaśniającej $X_{i}$, a $r_{i}$ jest współczynnikiem korelacji liniowej Pearsona między zmienną $X_{i}$ a $Y_{i}$
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+korelacje <- cor(data.train, method = "pearson")
+korelacje[1, c(2,3)]
+```
+**Model jest koincydentny**.
+  
+  Sprawdzimy łączną istotność parametrów strukturalnych testem Walda. Hipotezy:
+  
+  H0: $\beta_{1} = \beta_{2} = ... =\beta_{k} = 0$
+  
+  H1: $\beta_{1} = \beta_{2} = ... =\beta_{k}$ nie jest równe 0.
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+waldtest(model3)
+```
+**Model ma łącznie istotne parametry**.
+  
+  Sprawdzimy czy w modelu zachodzi zjawisko współliniowości
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+vif(model3)
+```
+Współliniowość oceniamy *czynnikiem inflacji wariancji* (VIF). Wskaźnik ten pokazuje ile razy wariancja predyktora jest większa od wartości niezakłóconej współliniowością, gdzie 1 jest najmniejszą możliwą wartością, a 10 największą. **W modelu nie ma zjawiska współliniowośći**.
+  
+  Sprawdzimy zjawisko heteroskedastyczności. Hipotezy:
+  
+  *H0: homoskedastyczność*
+  
+  *H1: 
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ncvTest(model3)
+```
+  
 
 
 

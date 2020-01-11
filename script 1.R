@@ -3,7 +3,6 @@ library(fastDummies)
 library(lmtest)
 library(car)
 library(GGally)
-ggpairs(data.train)
 
 
 data <-  read.csv("DaneZ3.csv", sep = ";")
